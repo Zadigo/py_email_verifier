@@ -208,10 +208,24 @@ async def _simple_verify_smtp(mx_record: str, email: 'EmailAddress', timeout=20)
     return result
 
 
-async def _simple_verify_smtp_records(records: Set[str], email: 'EmailAddress', timeout: int = 20):
-    aws = list(map(lambda x: _simple_verify_smtp(x, email, timeout), records))
-    async for aw in asyncio.as_completed(aws):
-        print(await aw)
+async def _simple_verify_smtp_records(records: Set[str], email: 'EmailAddress', timeout: int = 5):
+    aws = []
+    for record in records:
+        aw = _simple_verify_smtp(record, email, timeout)
+        aws.append(asyncio.wait_for(aw, 10))
+
+    for aw in aws:
+        try:
+            aw = await aw
+        except TimeoutError:
+            print(f'{aw} Timed out')
+
+
+    # aws = list(map(lambda x: asyncio.wait_for(
+    #     _simple_verify_smtp(x, email, timeout), 30), records))
+
+    # async for aw in asyncio.as_completed(aws):
+    #     print(await aw)
 
 
 def simple_verify_smtp(records: Set[str], email: 'EmailAddress', timeout: int = 20):

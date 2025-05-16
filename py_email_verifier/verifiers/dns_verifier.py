@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from py_email_verifier.models import EmailAddress
 
 
-def get_mx_records(domain: str, timeout: int, email_instance: 'EmailAddress') -> Answer:
+def get_mx_records(email_instance: 'EmailAddress', timeout: int = 10) -> Answer:
     """Returns the DNS (Domain Name System) records that specify the mail servers 
     responsible for handling incoming email for the particular domain
 
@@ -28,7 +28,7 @@ def get_mx_records(domain: str, timeout: int, email_instance: 'EmailAddress') ->
     """
     try:
         return resolver.resolve(
-            qname=domain,
+            qname=email_instance.domain,
             rdtype=rdtype_mx,
             lifetime=timeout
         )
@@ -48,11 +48,11 @@ def get_mx_records(domain: str, timeout: int, email_instance: 'EmailAddress') ->
         raise Exception('No MX record for domain found')
 
 
-def clean_mx_records(domain: str, timeout: int, email_instance: 'EmailAddress') -> Set[str]:
+def clean_mx_records(email_instance: 'EmailAddress', timeout: int = 10) -> Set[str]:
     """Function used to iterate over the Answer provided
     by the `get_mx_records` function. If an email's domain
     is valid, it should return a set of valid mx records"""
-    answer = get_mx_records(domain, timeout, email_instance)
+    answer = get_mx_records(email_instance, timeout)
 
     result = set()
 
@@ -87,4 +87,4 @@ def verify_dns(email: 'EmailAddress', timeout: int = 10):
     """
     if email.get_literal_ip:
         return [email.get_literal_ip]
-    return clean_mx_records(email.domain, timeout, email)
+    return clean_mx_records(email, timeout)

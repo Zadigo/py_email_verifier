@@ -17,7 +17,6 @@ class TestMixin:
 
 
 class TestEmailVerifiers(TestMixin, TestCase):
-
     def test_validate_email(self):
         emails = [
             'k.akshay9721@gmail.com',
@@ -40,11 +39,11 @@ class TestEmailVerifiers(TestMixin, TestCase):
 
 class TestDNSVerifiers(TestMixin, TestCase):
     def test_get_mx_records(self):
-        result = get_mx_records('digitalille.fr', 10, self.email)
+        result = get_mx_records(self.email)
         self.assertIsInstance(result, Answer)
 
     def test_clean_mx_recors(self):
-        result = clean_mx_records('digitalille.fr', 10, self.email)
+        result = clean_mx_records(self.email)
         self.assertIsInstance(result, set)
 
         for item in result:
@@ -60,6 +59,19 @@ class TestDNSVerifiers(TestMixin, TestCase):
             with self.subTest(item=item):
                 self.assertIsInstance(item, str)
 
+    def test_multiple_emails(self):
+        emails = [
+            'benoit.hennequin@unilever.com',
+            'jerome.cerisier@bmstores.fr',
+            'dbarner@newyorker.eu',
+            'pierre.boulle@getir.com'
+        ]
+
+        for email in emails:
+            with self.subTest(email=email):
+                result = verify_dns(EmailAddress(email))
+                print(result)
+
 
 class TestSMTPVerifier(TestMixin, TestCase):
     @classmethod
@@ -72,7 +84,6 @@ class TestSMTPVerifier(TestMixin, TestCase):
 
     def test_structure(self):
         email = EmailAddress('benoit.hennequin@unilever.com')
-        records = clean_mx_records(
-            'unilever.com', 10, email)
+        records = clean_mx_records(email)
         result = simple_verify_smtp(records, email)
         print(result)

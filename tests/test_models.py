@@ -5,11 +5,20 @@ from py_email_verifier.models import EmailAddress
 
 
 class TestModels(TestCase):
-    def test_email_address(self):
-        instance = EmailAddress('Timothe@digitalille.fr')
+    def setUp(self):
+        self.email = EmailAddress('Timothe@digitalille.fr')
 
-        self.assertEqual(instance.ace_formatted_domain, 'digitalille.fr')
-        self.assertEqual(instance.user, 'Timothe')
-        self.assertIsNone(instance.get_literal_ip)
-        self.assertEqual(instance.restructure, instance)
-        self.assertIsInstance(instance.json_response(), dict)
+    def test_email_address(self):
+        self.assertEqual(self.email.ace_formatted_domain, 'digitalille.fr')
+        self.assertEqual(self.email.user, 'Timothe')
+        self.assertIsNone(self.email.get_literal_ip)
+        self.assertEqual(self.email.restructure, self.email)
+        self.assertIsInstance(self.email.json_response(), dict)
+
+    def test_ns_lookup(self):
+        result = self.email.ns_lookup()
+        self.assertIsInstance(result, tuple)
+
+        for item in result:
+            with self.subTest(itemm=item):
+                self.assertIsInstance(item, list)
