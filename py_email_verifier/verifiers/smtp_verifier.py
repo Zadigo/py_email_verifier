@@ -1,8 +1,14 @@
+import asyncio
+import asgiref
+import socket
+import smtplib
 from smtplib import (SMTP, SMTPNotSupportedError, SMTPResponseException,
                      SMTPServerDisconnected)
 from socket import timeout
 from ssl import SSLError
 from typing import TYPE_CHECKING, Optional, Set
+
+import asgiref.sync
 
 from py_email_verifier.exceptions import AddressNotDeliverableError
 
@@ -17,8 +23,9 @@ class SMTPVerifier(SMTP):
     simulating email delivery and interacting with the recipient's mail server
     """
 
-    def __init__(self, local_hostname: str, timeout: int, debug: bool, sender: 'EmailAddress', recip: 'EmailAddress'):
+    def __init__(self, sender: 'EmailAddress', recip: Optional['EmailAddress'] = None, local_hostname: Optional[str] = None, timeout: int = 10, debug: bool = False):
         super().__init__(local_hostname=local_hostname, timeout=timeout)
+
         debug_level = 2 if debug else False
         self.set_debuglevel(debug_level)
 
@@ -28,6 +35,10 @@ class SMTPVerifier(SMTP):
         self._host = None
         self.errors = {}
         self.sock = None
+
+    def __str__(self):
+        name = self.__class__.__name__
+        return f'<{name} [{self._sender} -> {self._recip}]>'
 
     def putcmd(self, cmd, args=''):
         self._command = f'{cmd} {args}' if args else cmd
@@ -87,10 +98,11 @@ class SMTPVerifier(SMTP):
             self.does_esmtp = False
             self.close()
 
-    def connect(self, host='localhost', port=0, source_address=None):
+    def connect(self, host='localhost', port=25, source_address=None):
         """Tries to establish a connection to the email host"""
         self._command = 'connect'
         self._host = host
+
         try:
             code, message = super().connect(
                 host=host,
@@ -100,6 +112,9 @@ class SMTPVerifier(SMTP):
         except OSError as error:
             self._sender.add_error('smtp_protocol')
             raise SMTPServerDisconnected(str(error))
+        except Exception as e:
+            self._sender.add_error('error')
+            print(e)
         else:
             if code >= 400:
                 raise SMTPResponseException(code, message)
@@ -107,10 +122,10 @@ class SMTPVerifier(SMTP):
             self._sender.add_message(host, code, message)
             return code, message
 
-    def check(self, record):
+    def check(self, record: str):
         """Starts the MTA validation on a single record"""
         try:
-            self.connect(host=record)
+            self.connect(host=record, port=25)
             self.starttls()
             # Start the standard MTA email validation
             # ehlo/helo -> mail -> rcpt
@@ -118,7 +133,7 @@ class SMTPVerifier(SMTP):
             self.mail(sender=self._sender.restructure)
             code, message = self.rcpt(recip=self._recip.restructure)
         except SMTPServerDisconnected as e:
-            self._sender.add_error('dead_server')
+            self._sender.add_error('Timeout or dead server or port 25 blocked')
             return False
         except SMTPResponseException as e:
             if e.smtp_code >= 500:
@@ -141,10 +156,63 @@ class SMTPVerifier(SMTP):
         return result
 
 
-def smtp_check(email: 'EmailAddress', mx_records: Set[str], timeout: int = 10, helo_host: Optional[str] = None, from_address: Optional[str] = None, debug: bool = False):
+def smtp_check(email: 'EmailAddress', timeout: int = 10, helo_host: Optional[str] = None, from_address: Optional['EmailAddress'] = None, debug: bool = False):
     """
     Perform an MTA validation, also known as Mail Transfer Agent validation 
     by verifying the integrity and deliverability of an email address"""
     sender = from_address or email
-    instance = SMTPVerifier(helo_host, timeout, debug, sender, email)
-    return instance.check_multiple(mx_records)
+    # instance = SMTPVerifier(helo_host, timeout, debug, sender, email)
+    instance = SMTPVerifier(
+        sender,
+        local_hostname=helo_host,
+        timeout=timeout,
+        debug=debug
+    )
+    return instance.check_multiple(email.mx_records)
+
+
+async def _simple_verify_smtp(mx_record: str, email: 'EmailAddress', timeout=20):
+    try:
+        smtp = SMTP(mx_record, timeout=timeout)
+        status, _ = smtp.ehlo()
+
+        if status >= 400:
+            smtp.quit()
+            return False
+
+        smtp.mail('')
+        status, _ = smtp.rcpt(str(email))
+
+        if status >= 400:
+            print(f'{mx_record} answer: {status} - {_}')
+            result = False
+
+        if status >= 200 and status <= 250:
+            result = True
+
+        print(f'{mx_record} answer: {status} - {_}')
+
+        smtp.quit()
+    except smtplib.SMTPServerDisconnected:
+        print(
+            f'Server does not permit verify user, {mx_record} disconnected')
+    except smtplib.SMTPConnectError:
+        print(f'Unable to connect to {mx_record}.\n')
+    except socket.timeout as e:
+        print(f'Timeout connecting to server {mx_record}: {e}')
+        return None
+    except socket.error as e:
+        print(f'ServerError or socket.error exception raised {e}')
+        return None
+
+    return result
+
+
+async def _simple_verify_smtp_records(records: Set[str], email: 'EmailAddress', timeout: int = 20):
+    aws = list(map(lambda x: _simple_verify_smtp(x, email, timeout), records))
+    async for aw in asyncio.as_completed(aws):
+        print(await aw)
+
+
+def simple_verify_smtp(records: Set[str], email: 'EmailAddress', timeout: int = 20):
+    return asgiref.sync.async_to_sync(_simple_verify_smtp_records)(records, email, timeout)

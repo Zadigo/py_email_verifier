@@ -1,12 +1,13 @@
-from functools import cached_property
-from typing import Dict, List, Set, Union
+from functools import cached_property, lru_cache
+from typing import Dict, List, Set, Tuple, Union
 
 import idna
+from nslookup import Nslookup
 
 
 class EmailEvaluationMixin:
     evaluation: Set[str] = set()
-    mx_records = None
+    mx_records: Set[str] = set()
     messages = []
     errors = {}
 
@@ -15,6 +16,12 @@ class EmailEvaluationMixin:
         return any([
             'protected' in self.evaluation
         ])
+
+    @lru_cache(maxsize=100)
+    def ns_lookup(self, domain: str) -> Tuple[list[str], list[str]]:
+        instance = Nslookup(dns_servers=['1.1.1.1'])
+        ips_record = instance.dns_lookup(domain)
+        return ips_record.response_full, ips_record.answer
 
     def json_response(self) -> Dict[str, str | bool | List[str]]:
         return {

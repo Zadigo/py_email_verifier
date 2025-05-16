@@ -1,16 +1,19 @@
 from unittest import TestCase
 
 from dns.resolver import Answer
-
-from py_email_verifier.dns_verifier import get_mx_records, clean_mx_records, verify_dns
-from py_email_verifier.email_verifier import (check_is_ip_address,
-                                              validate_email)
 from py_email_verifier.models import EmailAddress
+from py_email_verifier.verifiers.dns_verifier import (clean_mx_records,
+                                                      get_mx_records,
+                                                      verify_dns)
+from py_email_verifier.verifiers.email_verifier import (check_is_ip_address,
+                                                        validate_email)
+from py_email_verifier.verifiers.smtp_verifier import SMTPVerifier, simple_verify_smtp
 
 
 class TestMixin:
     def setUp(self):
         self.email = EmailAddress('Timothe@digitalille.fr')
+        self.valid_mx_record = 'mta-gw.infomaniak.ch'
 
 
 class TestEmailVerifiers(TestMixin, TestCase):
@@ -56,3 +59,20 @@ class TestDNSVerifiers(TestMixin, TestCase):
         for item in result:
             with self.subTest(item=item):
                 self.assertIsInstance(item, str)
+
+
+class TestSMTPVerifier(TestMixin, TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.sender = EmailAddress('Timothe@digitalille.fr')
+        cls.recip = EmailAddress('Timothe@digitalille.fr')
+
+    def _create_instance(self):
+        return SMTPVerifier(self.sender, self.recip)
+
+    def test_structure(self):
+        email = EmailAddress('benoit.hennequin@unilever.com')
+        records = clean_mx_records(
+            'unilever.com', 10, email)
+        result = simple_verify_smtp(records, email)
+        print(result)
