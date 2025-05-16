@@ -1,4 +1,4 @@
-from verify_email import verify_email, verify_email_async
+from _verify_email import verify_email, verify_email_async
 import time
 import asyncio
 

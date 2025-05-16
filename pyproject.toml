@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Kryptone"
+description = "Kryptone is a hight level web scapper dedicated to marketers and wrapped around the Selenium library in order to automate and simplify website auditing and scraping."
+version="6.0.0"
+requires-python = ">= 3.13"
+readme = "README.md"
+keywords = [
+  "emailing",
+  "email verification",
+  "email verifyer",
+  "email verify",
+  "parsing",
+  "html-parsing",
+  "python-automation"
+]
+dependencies = [
+  "requests"
+]
+authors = [
+  {name = "John Pendenque", email = "pendenquejohn@gmail.com"},
+]
+maintainers = [
+  {name = "John Pendenque", email = "pendenquejohn@gmail.com"}
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Operating System :: POSIX",
+  "Operating System :: Unix",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Topic :: Internet",
+  "Topic :: Internet :: WWW/HTTP",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Natural Language :: English",
+  "Operating System :: Microsoft :: Windows :: Windows 11",
+  "Operating System :: MacOS"
+]
+
+[project.urls]
+Homepage = "https://github.com/Zadigo/py_email_verifier"
+Documentation = "https://github.com/Zadigo/py_email_verifier/wiki"
+Repository = "https://github.com/Zadigo/py_email_verifier.git"
+Changelog = "https://github.com/Zadigo/py_email_verifier/blob/main/CHANGELOG.md"
+
+[tool.pyright]
+typeCheckingMode = "basic"
+extraPaths = ["./src"]
+reportMissingImports = true

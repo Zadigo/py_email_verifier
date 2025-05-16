@@ -1,5 +1,5 @@
 from datetime import datetime
-from verify_email import verify_email
+from _verify_email import verify_email
 
 import multiprocessing
 
